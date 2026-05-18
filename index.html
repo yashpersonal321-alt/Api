@@ -1,210 +1,187 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yaadein AI - Karodon ki App</title>
+    <title>Jarvis Voice Overlay</title>
     <style>
-        :root {
-            --primary: #5d4037;
-            --accent: #ff5252;
-            --bg: #fdf6e3;
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: rgba(14, 22, 33, 0.95); /* Semi-transparent look */
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: var(--bg);
+        #status {
+            font-size: 22px;
+            margin-bottom: 40px;
+            color: #2481cc;
+            font-weight: bold;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        /* Bada Mic Button */
+        .mic-btn {
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, #2481cc, #11538c);
+            border: 5px solid #ffffff;
+            border-radius: 50%;
+            font-size: 50px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(36, 129, 204, 0.7);
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            color: var(--primary);
-        }
-
-        .app-card {
-            background: white;
-            padding: 30px;
-            border-radius: 25px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            width: 90%;
-            max-width: 450px;
-            text-align: center;
-        }
-
-        .question-box {
-            background: #fff9eb;
-            padding: 15px;
-            border-radius: 12px;
-            border-left: 5px solid var(--accent);
-            margin: 20px 0;
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-
-        #resultText {
-            min-height: 120px;
-            border: 2px dashed #d7ccc8;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 12px;
-            background: #fafafa;
-            text-align: left;
-            line-height: 1.6;
-        }
-
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
             transition: 0.3s;
         }
 
-        .btn-mic {
-            background: var(--accent);
-            color: white;
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            font-size: 1.5rem;
-            margin-bottom: 10px;
+        .mic-btn:active {
+            transform: scale(0.9);
+            box-shadow: 0 0 40px rgba(36, 129, 204, 1);
         }
 
-        .btn-ai { background: #E91E63; color: white; width: 100%; }
-        .btn-next { background: #8d6e63; color: white; flex: 1; }
-        
-        .recording-active {
+        /* Bada Cancel Button */
+        .cancel-btn {
+            margin-top: 50px;
+            width: 90px;
+            height: 90px;
+            background: #d9534f;
+            border: none;
+            border-radius: 50%;
+            font-size: 28px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(217, 83, 79, 0.5);
+        }
+
+        .cancel-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Pulse Animation jab agent sun raha ho */
+        .listening {
             animation: pulse 1.5s infinite;
-            background: #4caf50 !important;
         }
 
         @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
+            0% { box-shadow: 0 0 0 0 rgba(36, 129, 204, 0.7); }
+            70% { box-shadow: 0 0 0 30px rgba(36, 129, 204, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(36, 129, 204, 0); }
         }
-
-        .status { font-size: 0.9rem; margin-top: 10px; color: #795548; }
     </style>
 </head>
 <body>
 
-<div class="app-card">
-    <h1>Yaadein AI 🎙️</h1>
-    <p>Har yaad ek anmol tohfa hai.</p>
+    <div id="status">Jarvis is listening, sir...</div>
 
-    <div class="question-box" id="qBox">
-        Dada ji, aapki pehli kamai kya thi aur aapne uska kya kiya?
-    </div>
+    <!-- Bada Mic Button -->
+    <button class="mic-btn listening" id="micBtn" onclick="startListening()">🎙️</button>
 
-    <div id="resultText">Jo aap bolenge, wo yahan likha jayega...</div>
+    <!-- Bada Cancel Button -->
+    <button class="cancel-btn" onclick="closeAgent()">✖</button>
 
-    <div class="controls">
-        <button class="btn btn-mic" id="micBtn" onclick="toggleMic()">🎤</button>
-        <button class="btn btn-ai" onclick="askAI()">✨ AI Kahani Banayein</button>
-        <button class="btn btn-next" onclick="newQuestion()">Agla Sawal</button>
-    </div>
-
-    <div class="status" id="statusLabel">Start karne ke liye mic dabayein</div>
-</div>
-
-<script>
-    // --- SETTINGS ---
-    const API_KEY = "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";
-    let isRecording = false;
-    let recognition;
-
-    // --- VOICE RECOGNITION SETUP ---
-    if ('webkitSpeechRecognition' in window) {
-        recognition = new webkitSpeechRecognition();
-        recognition.lang = 'hi-IN';
-        recognition.continuous = true;
-        recognition.interimResults = true;
-
-        recognition.onresult = (event) => {
-            let finalStr = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) finalStr += event.results[i][0].transcript;
-            }
-            if(finalStr) document.getElementById('resultText').innerText = finalStr;
+    <script>
+        const contacts = {
+            "vivek": "9992074369",
+            "suraj": "7988045288",
+            "sunil": "8930068400",
+            "papa": "9728476566"
         };
 
-        recognition.onend = () => { stopUi(); };
-    }
+        // --- SPEECH RECOGNITION (BOLNE WALI FEATURE) ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
 
-    function toggleMic() {
-        if (!isRecording) {
-            recognition.start();
-            isRecording = true;
-            document.getElementById('micBtn').classList.add('recording-active');
-            document.getElementById('statusLabel').innerText = "Main sun raha hoon...";
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US'; // Commands English me pehchanega
+
+            recognition.onresult = function(event) {
+                const resultText = event.results[0][0].transcript;
+                document.getElementById('status').innerText = `You said: "${resultText}"`;
+                processVoiceCommand(resultText);
+            };
+
+            recognition.onerror = function() {
+                document.getElementById('status').innerText = "Didn't catch that. Tap Mic to try again.";
+                document.getElementById('micBtn').classList.remove('listening');
+            };
+
+            recognition.onend = function() {
+                document.getElementById('micBtn').classList.remove('listening');
+            };
         } else {
-            recognition.stop();
-            stopUi();
+            alert("Sir, aapka browser voice recognition support nahi karta.");
         }
-    }
 
-    function stopUi() {
-        isRecording = false;
-        document.getElementById('micBtn').classList.remove('recording-active');
-        document.getElementById('statusLabel').innerText = "Recording saved!";
-    }
+        // Auto-start listening jab app khule
+        window.onload = function() {
+            startListening();
+        };
 
-    // --- AI LOGIC (OpenRouter) ---
-    async function askAI() {
-        const userText = document.getElementById('resultText').innerText;
-        const status = document.getElementById('statusLabel');
-
-        if(userText.length < 5) return alert("Pehle kuch record karein!");
-
-        status.innerText = "AI kahani likh raha hai... ✍️";
-        
-        try {
-            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${API_KEY}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    "model": "mistralai/mistral-7b-instruct:free",
-                    "messages": [
-                        {"role": "system", "content": "You are a professional biographer. Convert the user's raw memories into a beautiful, heart-touching short story in Hindi."},
-                        {"role": "user", "content": userText}
-                    ]
-                })
-            });
-
-            const data = await response.json();
-            const story = data.choices[0].message.content;
-            document.getElementById('resultText').innerHTML = "<strong>Kahani:</strong><br>" + story;
-            status.innerText = "Wow! Kya kahani hai!";
-        } catch (e) {
-            status.innerText = "AI connect nahi ho paya.";
-            console.error(e);
+        function startListening() {
+            if (!recognition) return;
+            document.getElementById('status').innerText = "Listening, sir...";
+            document.getElementById('micBtn').classList.add('listening');
+            recognition.start();
         }
-    }
 
-    function newQuestion() {
-        const qs = [
-            "Aapka pehla school kaisa tha?",
-            "Bachpan ki sabse badi shararat?",
-            "Pehli baar cinema kab dekha?",
-            "Gaon ki wo kaunsi cheez hai jo aap bahut miss karte hain?"
-        ];
-        document.getElementById('qBox').innerText = qs[Math.floor(Math.random()*qs.length)];
-        document.getElementById('resultText').innerText = "Jo aap bolenge, wo yahan likha jayega...";
-    }
-</script>
+        // --- TEXT TO SPEECH ---
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const speech = new SpeechSynthesisUtterance(text);
+            speech.lang = text.includes("Calling") ? 'en-US' : 'hi-IN';
+            window.speechSynthesis.speak(speech);
+        }
 
+        function processVoiceCommand(voiceInput) {
+            let cmd = voiceInput.toLowerCase().trim();
+
+            // Calling Logic
+            if (cmd.startsWith('call ')) {
+                let name = cmd.replace('call ', '').trim();
+                let number = contacts[name] || name;
+                let formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+                
+                speak(`Calling to ${formattedName} for you sir`);
+                
+                setTimeout(() => {
+                    window.location.href = `tel:${number}`;
+                }, 2000);
+            }
+            // App Opening
+            else if (cmd.includes('open youtube')) {
+                speak("Opening YouTube, sir.");
+                setTimeout(() => { window.open('https://youtube.com', '_blank'); }, 1000);
+            }
+            else if (cmd.includes('open instagram')) {
+                speak("Opening Instagram, sir.");
+                setTimeout(() => { window.open('https://instagram.com', '_blank'); }, 1000);
+            }
+            else {
+                speak("Command not recognized, sir.");
+                document.getElementById('status').innerText = "Command not recognized.";
+            }
+        }
+
+        function closeAgent() {
+            speak("Goodbye, sir.");
+            // Browser security page ko direct close nahi karne deti, toh hum ise blank kar dete hain ya go back kar dete hain
+            document.getElementById('status').innerText = "Exiting...";
+            setTimeout(() => {
+                window.history.back();
+            }, 500);
+        }
+    </script>
 </body>
 </html>
